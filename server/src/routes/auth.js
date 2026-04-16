@@ -3,11 +3,19 @@ const { body } = require('express-validator');
 const { handleValidation } = require('../middleware/validate');
 const authController = require('../controllers/auth');
 const { authenticate } = require('../middleware/auth');
+const rateLimit = require('express-rate-limit');
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 requests per windowMs
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
+});
 
 const router = express.Router();
 
 router.post(
   '/register',
+  authLimiter,
   [
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').trim().isEmail().withMessage('Valid email is required').normalizeEmail(),
@@ -20,6 +28,7 @@ router.post(
 
 router.post(
   '/login',
+  authLimiter,
   [
     body('email').trim().isEmail().withMessage('Valid email is required').normalizeEmail(),
     body('password').notEmpty().withMessage('Password is required'),
@@ -29,7 +38,7 @@ router.post(
 );
 
 // Google OAuth
-router.post('/google', authController.googleCallback);
+router.post('/google', authLimiter, authController.googleCallback);
 
 router.get('/me', authenticate, authController.getMe);
 

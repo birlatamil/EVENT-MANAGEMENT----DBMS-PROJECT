@@ -33,13 +33,35 @@ function initSocket(httpServer) {
     }
   });
 
+  const pool = require('./config/db');
+
   io.on('connection', (socket) => {
     // Join user's personal room for notifications
     socket.join(`user:${socket.user.id}`);
 
     // Join event chat room
-    socket.on('join-event', (eventId) => {
-      socket.join(`event:${eventId}`);
+    socket.on('join-event', async (eventId) => {
+      try {
+        if (socket.user.role === 'admin') {
+          return socket.join(`event:${eventId}`);
+        }
+
+        if (socket.user.role === 'organizer') {
+          const evCheck = await pool.query('SELECT organizer_id FROM events WHERE id = $1', [eventId]);
+          if (evCheck.rows[0]?.organizer_id === socket.user.id) {
+            return socket.join(`event:${eventId}`);
+          }
+        }
+
+        const regCheck = await pool.query('SELECT id FROM registrations WHERE user_id = $1 AND event_id = $2', [socket.user.id, eventId]);
+        if (regCheck.rows.length > 0) {
+          socket.join(`event:${eventId}`);
+        } else {
+          socket.emit('error', { message: 'Unauthorized to join this event channel' });
+        }
+      } catch (err) {
+        console.error('Socket join event error:', err);
+      }
     });
 
     socket.on('leave-event', (eventId) => {

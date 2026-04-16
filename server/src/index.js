@@ -15,7 +15,10 @@ const otpRoutes = require('./routes/otp');
 const chatRoutes = require('./routes/chat');
 const { initSocket } = require('./socket');
 
+const helmet = require('helmet');
+
 const app = express();
+app.use(helmet());
 const server = http.createServer(app);
 
 // Initialize Socket.IO

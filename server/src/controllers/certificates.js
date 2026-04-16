@@ -46,6 +46,14 @@ async function uploadTemplate(req, res) {
 
     const imagePath = req.file.path;
 
+    // Security Check: Verify Magic Bytes
+    const fileType = await import('file-type');
+    const type = await fileType.fileTypeFromFile(imagePath);
+    if (!type || !['image/png', 'image/jpeg', 'image/webp'].includes(type.mime)) {
+      fs.unlinkSync(imagePath);
+      return res.status(400).json({ error: 'Invalid file signature. Only true PNG, JPG, and WebP images are allowed.' });
+    }
+
     // Upsert template record
     await pool.query(
       `INSERT INTO certificate_templates (event_id, image_path)
@@ -303,8 +311,9 @@ async function downloadCertificate(req, res) {
         margin: 0,
       });
 
+      const safeName = data.participant_name.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_');
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=Certificate_${data.participant_name.replace(/\s+/g, '_')}.pdf`);
+      res.setHeader('Content-Disposition', `attachment; filename="Certificate_${safeName}.pdf"`);
       doc.pipe(res);
 
       doc.image(compositeImage, 0, 0, { width: imgWidth, height: imgHeight });
@@ -322,8 +331,9 @@ async function downloadCertificate(req, res) {
         margin: 50
       });
 
+      const safeName = data.participant_name.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_');
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=Certificate_${data.participant_name.replace(/\s+/g, '_')}.pdf`);
+      res.setHeader('Content-Disposition', `attachment; filename="Certificate_${safeName}.pdf"`);
 
       doc.pipe(res);
 
