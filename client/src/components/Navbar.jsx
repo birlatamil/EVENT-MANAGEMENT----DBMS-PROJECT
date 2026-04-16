@@ -124,7 +124,7 @@ function Navbar() {
         <div className="brand-icon">
           <Calendar size={18} color="white" />
         </div>
-        EventHive
+        Certify
       </Link>
 
       <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>

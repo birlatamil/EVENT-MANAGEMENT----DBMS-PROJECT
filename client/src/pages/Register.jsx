@@ -83,7 +83,7 @@ function Register() {
             <UserPlus size={24} color="white" />
           </div>
           <h2 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>Create Account</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Join EventHive — it's free</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Join Certify — it's free</p>
         </div>
 
         {error && (

@@ -83,7 +83,7 @@ function Login() {
             <LogIn size={24} color="white" />
           </div>
           <h2 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>Welcome Back</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Sign in to continue to EventHive</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Sign in to continue to Certify</p>
         </div>
 
         {error && (
