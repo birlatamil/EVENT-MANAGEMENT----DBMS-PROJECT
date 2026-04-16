@@ -29,11 +29,11 @@ async function openOTPSession(req, res) {
     );
     const session = sessionResult.rows[0];
 
-    // Get all registrations for this event
+    // Get ONLY participant registrations (exclude organizer and admins)
     const regs = await pool.query(
       `SELECT r.id as registration_id, r.user_id, u.name
        FROM registrations r JOIN users u ON r.user_id = u.id
-       WHERE r.event_id = $1`,
+       WHERE r.event_id = $1 AND u.role = 'participant'`,
       [eventId]
     );
 
@@ -48,7 +48,7 @@ async function openOTPSession(req, res) {
         [session.id, reg.registration_id, otp, expiresAt]
       );
 
-      // Send notification with OTP to participant's inbox
+      // Send notification with OTP only to participants
       await createNotification(
         reg.user_id,
         parseInt(eventId),
@@ -57,7 +57,6 @@ async function openOTPSession(req, res) {
         `Your OTP for "${event.title}" is: ${otp}. Enter this code on the event page to mark your attendance. Valid for 30 minutes.`
       );
 
-      // Also notify that attendance is open
       await createNotification(
         reg.user_id,
         parseInt(eventId),

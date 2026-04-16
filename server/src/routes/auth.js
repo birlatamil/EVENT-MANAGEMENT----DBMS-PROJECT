@@ -28,6 +28,9 @@ router.post(
   authController.login
 );
 
+// Google OAuth
+router.post('/google', authController.googleCallback);
+
 router.get('/me', authenticate, authController.getMe);
 
 module.exports = router;

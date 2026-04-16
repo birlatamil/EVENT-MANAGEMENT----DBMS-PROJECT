@@ -42,6 +42,18 @@ router.put(
   eventController.updateEvent
 );
 
+// Change event status (start / end / cancel)
+router.patch(
+  '/:id/status',
+  authenticate,
+  requireRole('admin', 'organizer'),
+  [
+    body('status').isIn(['upcoming', 'ongoing', 'completed', 'cancelled']).withMessage('Invalid status'),
+  ],
+  handleValidation,
+  eventController.changeEventStatus
+);
+
 router.delete(
   '/:id',
   authenticate,

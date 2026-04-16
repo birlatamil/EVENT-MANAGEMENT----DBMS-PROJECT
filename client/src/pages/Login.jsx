@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
@@ -11,6 +11,54 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  // Load Google Sign-In script
+  useEffect(() => {
+    if (!googleClientId || googleClientId === 'your-google-client-id.apps.googleusercontent.com') return;
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      window.google?.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: handleGoogleResponse,
+      });
+      window.google?.accounts.id.renderButton(
+        document.getElementById('google-signin-btn'),
+        {
+          theme: 'filled_black',
+          size: 'large',
+          width: '100%',
+          shape: 'pill',
+          text: 'signin_with',
+        }
+      );
+    };
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  const handleGoogleResponse = async (response) => {
+    setError('');
+    setLoading(true);
+    try {
+      const res = await api.post('/auth/google', {
+        credential: response.credential,
+      });
+      login(res.data.token);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Google login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,6 +90,18 @@ function Login() {
           <div className="alert alert-error">
             <AlertCircle size={16} /> {error}
           </div>
+        )}
+
+        {/* Google Sign-In Button */}
+        {googleClientId && googleClientId !== 'your-google-client-id.apps.googleusercontent.com' && (
+          <>
+            <div id="google-signin-btn" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
+              <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem', fontWeight: 500 }}>OR</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
+            </div>
+          </>
         )}
 
         <form onSubmit={handleSubmit}>

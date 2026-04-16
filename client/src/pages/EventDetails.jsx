@@ -6,7 +6,8 @@ import EventChat from '../components/EventChat';
 import CertificateEditor from '../components/CertificateEditor';
 import {
   Calendar, MapPin, Users, Ticket, CheckCircle, Download, ArrowLeft,
-  MessageCircle, Key, Award, Clock, Lock, Unlock, AlertCircle, Timer
+  MessageCircle, Key, Award, Clock, Lock, Unlock, AlertCircle, Timer,
+  Play, Square, XCircle, Edit3, Save, Trash2
 } from 'lucide-react';
 
 function EventDetails() {
@@ -25,8 +26,16 @@ function EventDetails() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpMessage, setOtpMessage] = useState('');
 
+  // Edit mode state
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [editLoading, setEditLoading] = useState(false);
+
   // Countdown
   const [countdown, setCountdown] = useState('');
+
+  // Confirm dialogs
+  const [confirmAction, setConfirmAction] = useState(null);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -142,6 +151,60 @@ function EventDetails() {
     }
   };
 
+  // ====== Event Lifecycle ======
+  const changeStatus = async (newStatus) => {
+    try {
+      setError('');
+      setConfirmAction(null);
+      const resp = await api.patch(`/events/${id}/status`, { status: newStatus });
+      setEvent(resp.data.event);
+      setSuccess(resp.data.message);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update status');
+    }
+  };
+
+  const deleteEvent = async () => {
+    try {
+      setError('');
+      setConfirmAction(null);
+      await api.delete(`/events/${id}`);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete event');
+    }
+  };
+
+  // ====== Edit Event ======
+  const startEditing = () => {
+    setEditForm({
+      title: event.title,
+      description: event.description,
+      event_date: new Date(event.event_date).toISOString().slice(0, 16),
+      venue: event.venue,
+      capacity: event.capacity,
+    });
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    setEditLoading(true);
+    setError('');
+    try {
+      const resp = await api.put(`/events/${id}`, {
+        ...editForm,
+        capacity: parseInt(editForm.capacity),
+      });
+      setEvent(resp.data.event);
+      setEditing(false);
+      setSuccess('Event updated successfully!');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update event');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   // OTP input handling
   const handleOtpChange = (index, value) => {
     if (value.length > 1) value = value.slice(-1);
@@ -151,7 +214,6 @@ function EventDetails() {
     newOtp[index] = value;
     setOtpInput(newOtp);
 
-    // Auto-focus next input
     if (value && index < 5) {
       const next = document.getElementById(`otp-${index + 1}`);
       if (next) next.focus();
@@ -196,7 +258,7 @@ function EventDetails() {
   if (loading) return <main style={{ textAlign: 'center', paddingTop: '5rem', color: 'var(--text-muted)' }}>Loading event details...</main>;
   if (error && !event) return <main><div className="alert alert-error">{error}</div></main>;
 
-  const isOrganizer = user.role === 'admin' || user.id === event.organizer_id;
+  const isOrganizer = user && (user.role === 'admin' || user.id === event.organizer_id);
 
   const tabs = [
     { key: 'details', label: 'Details', icon: <Calendar size={15} /> },
@@ -205,8 +267,33 @@ function EventDetails() {
     { key: 'certificates', label: 'Certificates', icon: <Award size={15} /> },
   ];
 
+  // Confirmation Modal
+  const ConfirmModal = () => {
+    if (!confirmAction) return null;
+    return (
+      <div style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 200, animation: 'fadeIn 0.15s ease-out',
+      }} onClick={() => setConfirmAction(null)}>
+        <div className="glass-elevated animate-slide-up" style={{ padding: '2rem', maxWidth: '400px', width: '90%', borderRadius: '20px' }} onClick={(e) => e.stopPropagation()}>
+          <h3 style={{ marginBottom: '0.75rem' }}>{confirmAction.title}</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>{confirmAction.message}</p>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button className="btn" style={{ flex: 1 }} onClick={() => setConfirmAction(null)}>Cancel</button>
+            <button className={`btn ${confirmAction.btnClass || 'btn-danger'}`} style={{ flex: 1 }} onClick={confirmAction.onConfirm}>
+              {confirmAction.btnLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <main className="animate-fade-in" style={{ maxWidth: '900px' }}>
+      <ConfirmModal />
+
       <button
         onClick={() => navigate('/events')}
         className="btn btn-sm"
@@ -222,7 +309,11 @@ function EventDetails() {
       <div className="glass" style={{ overflow: 'hidden', marginBottom: '1.5rem' }}>
         <div style={{
           height: '180px',
-          background: 'linear-gradient(135deg, var(--primary), var(--accent))',
+          background: event.status === 'cancelled'
+            ? 'linear-gradient(135deg, #7f1d1d, #991b1b)'
+            : event.status === 'completed'
+            ? 'linear-gradient(135deg, #334155, #475569)'
+            : 'linear-gradient(135deg, var(--primary), var(--accent))',
           display: 'flex',
           alignItems: 'flex-end',
           padding: '1.75rem',
@@ -238,7 +329,7 @@ function EventDetails() {
                 </span>
                 <h1 style={{ margin: 0, fontSize: '2rem', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{event.title}</h1>
               </div>
-              {countdown && (
+              {countdown && event.status === 'upcoming' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(0,0,0,0.3)', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.85rem', backdropFilter: 'blur(4px)' }}>
                   <Timer size={14} /> {countdown}
                 </div>
@@ -278,8 +369,62 @@ function EventDetails() {
             <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Organized by</p>
             <p style={{ margin: 0, fontWeight: 600 }}>{event.organizer_name}</p>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            {!isOrganizer && (
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {/* Organizer Controls */}
+            {isOrganizer && (
+              <>
+                {event.status === 'upcoming' && (
+                  <button
+                    onClick={() => setConfirmAction({
+                      title: 'Start Event?',
+                      message: 'This will mark the event as ongoing and notify all registered participants.',
+                      btnLabel: 'Start Event',
+                      btnClass: 'btn-success',
+                      onConfirm: () => changeStatus('ongoing'),
+                    })}
+                    className="btn btn-success btn-sm"
+                  >
+                    <Play size={14} /> Start Event
+                  </button>
+                )}
+                {event.status === 'ongoing' && (
+                  <button
+                    onClick={() => setConfirmAction({
+                      title: 'End Event?',
+                      message: 'This will mark the event as completed and notify all participants.',
+                      btnLabel: 'End Event',
+                      btnClass: 'btn-warning',
+                      onConfirm: () => changeStatus('completed'),
+                    })}
+                    className="btn btn-warning btn-sm"
+                  >
+                    <Square size={14} /> End Event
+                  </button>
+                )}
+                {(event.status === 'upcoming' || event.status === 'ongoing') && (
+                  <button
+                    onClick={() => setConfirmAction({
+                      title: 'Cancel Event?',
+                      message: 'This will cancel the event and notify all registered participants. This action is irreversible.',
+                      btnLabel: 'Cancel Event',
+                      btnClass: 'btn-danger',
+                      onConfirm: () => changeStatus('cancelled'),
+                    })}
+                    className="btn btn-danger btn-sm"
+                  >
+                    <XCircle size={14} /> Cancel
+                  </button>
+                )}
+                {event.status !== 'cancelled' && (
+                  <button onClick={startEditing} className="btn btn-sm">
+                    <Edit3 size={14} /> Edit
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* Participant Register */}
+            {!isOrganizer && event.status !== 'cancelled' && event.status !== 'completed' && (
               <button onClick={handleRegister} className="btn btn-primary">
                 <Ticket size={16} /> Register Now
               </button>
@@ -287,6 +432,52 @@ function EventDetails() {
           </div>
         </div>
       </div>
+
+      {/* Edit Event Modal */}
+      {editing && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 200,
+        }} onClick={() => setEditing(false)}>
+          <div className="glass-elevated animate-slide-up" style={{ padding: '2rem', maxWidth: '520px', width: '90%', borderRadius: '20px', maxHeight: '85vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginBottom: '1.5rem' }}>Edit Event</h3>
+
+            <div className="form-group">
+              <label>Title</label>
+              <input type="text" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
+            </div>
+
+            <div className="form-group">
+              <label>Description</label>
+              <textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows="4" />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label>Date & Time</label>
+                <input type="datetime-local" value={editForm.event_date} onChange={(e) => setEditForm({ ...editForm, event_date: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label>Capacity</label>
+                <input type="number" value={editForm.capacity} onChange={(e) => setEditForm({ ...editForm, capacity: e.target.value })} min="1" />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Venue</label>
+              <input type="text" value={editForm.venue} onChange={(e) => setEditForm({ ...editForm, venue: e.target.value })} />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+              <button className="btn" style={{ flex: 1 }} onClick={() => setEditing(false)}>Cancel</button>
+              <button className="btn btn-primary" style={{ flex: 2 }} onClick={saveEdit} disabled={editLoading}>
+                <Save size={16} /> {editLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="tabs">
@@ -308,12 +499,29 @@ function EventDetails() {
           <p style={{ color: 'var(--text-muted)', lineHeight: 1.8, whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>
             {event.description}
           </p>
+
+          {event.status === 'cancelled' && (
+            <div className="alert alert-error" style={{ marginTop: '1.5rem' }}>
+              <XCircle size={18} /> This event has been cancelled.
+            </div>
+          )}
+          {event.status === 'completed' && (
+            <div className="alert alert-info" style={{ marginTop: '1.5rem' }}>
+              <CheckCircle size={18} /> This event has concluded.
+            </div>
+          )}
         </div>
       )}
 
       {activeTab === 'chat' && (
         <div className="animate-fade-in">
-          <EventChat eventId={id} />
+          {event.status === 'cancelled' ? (
+            <div className="glass" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Chat is disabled for cancelled events.
+            </div>
+          ) : (
+            <EventChat eventId={id} />
+          )}
         </div>
       )}
 

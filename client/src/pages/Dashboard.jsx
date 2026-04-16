@@ -178,15 +178,30 @@ function Dashboard() {
                   <div style={{ color: 'var(--text-dim)', fontSize: '0.75rem', marginBottom: '1rem' }}>
                     {new Date(cert.event_date).toLocaleDateString()} • Issued {new Date(cert.issued_at).toLocaleDateString()}
                   </div>
-                  <a
-                    href={`http://localhost:5000/api/certificates/download/${cert.certificate_uid}?token=${localStorage.getItem('token')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
                     className="btn btn-primary btn-sm"
                     style={{ width: '100%' }}
+                    onClick={async () => {
+                      try {
+                        const res = await api.get(`/certificates/download/${cert.certificate_uid}`, {
+                          responseType: 'blob',
+                        });
+                        const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.setAttribute('download', `Certificate_${cert.event_title.replace(/\s+/g, '_')}.pdf`);
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                        window.URL.revokeObjectURL(url);
+                      } catch (err) {
+                        console.error('Download failed:', err);
+                        alert('Failed to download certificate. Please try again.');
+                      }
+                    }}
                   >
                     <Award size={14} /> Download Certificate
-                  </a>
+                  </button>
                 </div>
               ))}
             </div>

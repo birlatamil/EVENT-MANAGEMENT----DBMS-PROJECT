@@ -1,13 +1,15 @@
 const pool = require('../config/db');
+const { createNotification } = require('./notifications');
 
-// List events with pagination and search
+// List events with pagination and search — includes current_registrations
 async function getEvents(req, res) {
   try {
     const { page = 1, limit = 10, search = '', status } = req.query;
     const offset = (page - 1) * limit;
 
     let query = `
-      SELECT e.*, u.name as organizer_name
+      SELECT e.*, u.name as organizer_name,
+             (SELECT COUNT(*) FROM registrations WHERE event_id = e.id) as current_registrations
       FROM events e
       JOIN users u ON e.organizer_id = u.id
       WHERE 1=1
@@ -28,7 +30,10 @@ async function getEvents(req, res) {
     }
 
     // Get total count for pagination
-    const countQuery = query.replace('SELECT e.*, u.name as organizer_name', 'SELECT COUNT(*)');
+    const countQuery = query.replace(
+      /SELECT e\.\*, u\.name as organizer_name,\s*\(SELECT COUNT\(\*\) FROM registrations WHERE event_id = e\.id\) as current_registrations/,
+      'SELECT COUNT(*)'
+    );
     const totalResult = await pool.query(countQuery, params);
     const totalCount = parseInt(totalResult.rows[0].count);
 
@@ -109,7 +114,7 @@ async function updateEvent(req, res) {
     const { title, description, event_date, venue, capacity, status } = req.body;
 
     // Check ownership
-    const eventCheck = await pool.query('SELECT organizer_id FROM events WHERE id = $1', [id]);
+    const eventCheck = await pool.query('SELECT organizer_id, title FROM events WHERE id = $1', [id]);
     if (eventCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Event not found.' });
     }
@@ -156,6 +161,82 @@ async function updateEvent(req, res) {
   }
 }
 
+// Change event status with notifications to all participants
+async function changeEventStatus(req, res) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = ['upcoming', 'ongoing', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    }
+
+    // Check ownership
+    const eventCheck = await pool.query('SELECT * FROM events WHERE id = $1', [id]);
+    if (eventCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+
+    const event = eventCheck.rows[0];
+
+    if (req.user.role !== 'admin' && event.organizer_id !== req.user.id) {
+      return res.status(403).json({ error: 'Permission denied.' });
+    }
+
+    // Update status
+    const result = await pool.query(
+      `UPDATE events SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+      [status, id]
+    );
+
+    // Get all participants to notify (only role='participant')
+    const participants = await pool.query(
+      `SELECT r.user_id FROM registrations r
+       JOIN users u ON r.user_id = u.id
+       WHERE r.event_id = $1 AND u.role = 'participant'`,
+      [id]
+    );
+
+    // Send notifications based on status change
+    const notifMap = {
+      ongoing: {
+        type: 'event_started',
+        title: 'Event Started! 🎉',
+        message: `"${event.title}" has started. Join now!`,
+      },
+      completed: {
+        type: 'event_ended',
+        title: 'Event Ended',
+        message: `"${event.title}" has concluded. Thank you for participating!`,
+      },
+      cancelled: {
+        type: 'event_cancelled',
+        title: 'Event Cancelled ❌',
+        message: `"${event.title}" has been cancelled by the organizer.`,
+      },
+    };
+
+    if (notifMap[status]) {
+      const { type, title, message } = notifMap[status];
+      await Promise.all(
+        participants.rows.map((p) =>
+          createNotification(p.user_id, parseInt(id), type, title, message)
+        )
+      );
+    }
+
+    res.json({
+      message: `Event status changed to "${status}".`,
+      event: result.rows[0],
+    });
+
+  } catch (error) {
+    console.error('Change event status error:', error);
+    res.status(500).json({ error: 'Server error changing event status.' });
+  }
+}
+
 // Delete event
 async function deleteEvent(req, res) {
   try {
@@ -186,5 +267,6 @@ module.exports = {
   getEventById,
   createEvent,
   updateEvent,
+  changeEventStatus,
   deleteEvent
 };
