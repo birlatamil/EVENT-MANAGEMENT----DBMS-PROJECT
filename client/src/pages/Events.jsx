@@ -36,6 +36,11 @@ function Events() {
     return Math.min(100, Math.round((ev.current_registrations || 0) / ev.capacity * 100));
   };
 
+  const displayedEvents = events.filter((ev) => {
+    if (statusFilter === '') return ev.status !== 'completed' && ev.status !== 'cancelled';
+    return true;
+  });
+
   return (
     <main className="animate-fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -71,14 +76,6 @@ function Events() {
           </button>
         ))}
       </div>
-
-      {(() => {
-        const displayedEvents = events.filter(ev => {
-          if (statusFilter === '') return ev.status !== 'completed' && ev.status !== 'cancelled';
-          return true;
-        });
-        
-        return (
 
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
@@ -143,8 +140,7 @@ function Events() {
             );
           })}
         </div>
-      );
-      })()}
+      )}
     </main>
   );
 }
