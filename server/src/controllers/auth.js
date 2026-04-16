@@ -128,7 +128,7 @@ async function googleCallback(req, res) {
         `INSERT INTO users (name, email, password_hash, role)
          VALUES ($1, $2, $3, 'participant')
          RETURNING id, name, email, role`,
-        [name, email, null]
+        [name, email, '']
       );
       user = newUser.rows[0];
     }
