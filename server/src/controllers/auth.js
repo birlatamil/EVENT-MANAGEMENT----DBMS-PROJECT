@@ -95,11 +95,18 @@ async function googleCallback(req, res) {
   try {
     // Verify the Google ID token
     const { OAuth2Client } = require('google-auth-library');
-    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    const googleClientId = process.env.GOOGLE_CLIENT_ID;
+    console.log('Google OAuth: Using Client ID:', googleClientId ? googleClientId.substring(0, 20) + '...' : 'NOT SET');
+
+    if (!googleClientId) {
+      return res.status(500).json({ error: 'Google OAuth is not configured on the server.' });
+    }
+
+    const client = new OAuth2Client(googleClientId);
 
     const ticket = await client.verifyIdToken({
       idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
+      audience: googleClientId,
     });
 
     const payload = ticket.getPayload();

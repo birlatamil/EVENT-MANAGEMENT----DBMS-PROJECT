@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
@@ -12,8 +14,6 @@ const notificationRoutes = require('./routes/notifications');
 const otpRoutes = require('./routes/otp');
 const chatRoutes = require('./routes/chat');
 const { initSocket } = require('./socket');
-
-require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
