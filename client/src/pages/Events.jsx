@@ -57,10 +57,10 @@ function Events() {
       {/* Filter Tabs */}
       <div className="tabs" style={{ marginBottom: '2rem' }}>
         {[
-          { key: '', label: 'All Events' },
+          { key: '', label: 'Active Events' },
           { key: 'upcoming', label: 'Upcoming' },
           { key: 'ongoing', label: 'Ongoing' },
-          { key: 'completed', label: 'Completed' },
+          { key: 'completed', label: 'History' },
         ].map((f) => (
           <button
             key={f.key}
@@ -72,6 +72,14 @@ function Events() {
         ))}
       </div>
 
+      {(() => {
+        const displayedEvents = events.filter(ev => {
+          if (statusFilter === '') return ev.status !== 'completed' && ev.status !== 'cancelled';
+          return true;
+        });
+        
+        return (
+
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
           {[1, 2, 3].map((i) => (
@@ -80,7 +88,7 @@ function Events() {
             </div>
           ))}
         </div>
-      ) : events.length === 0 ? (
+      ) : displayedEvents.length === 0 ? (
         <div className="glass empty-state">
           <Calendar size={48} />
           <h3>No events found</h3>
@@ -88,7 +96,7 @@ function Events() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-          {events.map((ev, i) => {
+          {displayedEvents.map((ev, i) => {
             const capPercent = getCapacityPercent(ev);
             return (
               <div key={ev.id} className={`glass event-card animate-slide-up`} style={{ animationDelay: `${i * 0.05}s` }}>
@@ -135,7 +143,8 @@ function Events() {
             );
           })}
         </div>
-      )}
+      );
+      })()}
     </main>
   );
 }
