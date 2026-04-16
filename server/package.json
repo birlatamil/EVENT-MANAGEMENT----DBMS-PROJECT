@@ -1,0 +1,25 @@
+{
+  "name": "event-management-server",
+  "version": "1.0.0",
+  "description": "Event Management System — Express.js Backend",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-validator": "^7.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.1.1",
+    "pdfkit": "^0.15.0",
+    "pg": "^8.13.0",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.34.5",
+    "socket.io": "^4.8.3",
+    "uuid": "^10.0.0"
+  }
+}
