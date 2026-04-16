@@ -13,6 +13,7 @@ function Navbar() {
 
   const [time, setTime] = useState(new Date());
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef(null);
@@ -56,6 +57,11 @@ function Navbar() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const toggleNotifDropdown = async () => {
     const newState = !showNotifDropdown;
@@ -121,7 +127,11 @@ function Navbar() {
         EventHive
       </Link>
 
-      <nav className="navbar-nav">
+      <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+        {isMobileMenuOpen ? <X size={24} color="white" /> : <Menu size={24} color="white" />}
+      </button>
+
+      <nav className={`navbar-nav ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         {/* Live Clock */}
         <div className="live-clock">
           <span className="clock-dot"></span>
