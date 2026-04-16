@@ -32,7 +32,7 @@ function Login() {
         {
           theme: 'filled_black',
           size: 'large',
-          width: '100%',
+          width: '340',
           shape: 'pill',
           text: 'signin_with',
         }

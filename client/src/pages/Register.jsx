@@ -30,7 +30,7 @@ function Register() {
         {
           theme: 'filled_black',
           size: 'large',
-          width: '100%',
+          width: '340',
           shape: 'pill',
           text: 'signup_with',
         }
