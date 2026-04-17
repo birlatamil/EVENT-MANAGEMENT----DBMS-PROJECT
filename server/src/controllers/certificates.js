@@ -47,8 +47,8 @@ async function uploadTemplate(req, res) {
     const imagePath = req.file.path;
 
     // Security Check: Verify Magic Bytes
-    const fileType = await import('file-type');
-    const type = await fileType.fileTypeFromFile(imagePath);
+    const fileType = require('file-type');
+    const type = await fileType.fromFile(imagePath);
     if (!type || !['image/png', 'image/jpeg', 'image/webp'].includes(type.mime)) {
       fs.unlinkSync(imagePath);
       return res.status(400).json({ error: 'Invalid file signature. Only true PNG, JPG, and WebP images are allowed.' });
